@@ -2,6 +2,9 @@ const express = require("express");
 const { initializeDatabase } = require("./db/db.connect");
 const Books = require("./models/book.models");
 const Categories = require("./models/category.models")
+const Wishlist = require("./models/wishlist.models")
+const Orders = require("./models/orders.models");
+
 const cors = require("cors");
 require("dotenv").config();
 initializeDatabase();
@@ -85,6 +88,15 @@ async function readBookByGenre(genreName){
   }
 }
 
+app.get("/api/books/genre/all", async (req, res) => {
+  try {
+    const books = await Books.find(); // fetch all books
+    res.json({ data: { books }});
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 app.get("/api/books/genre/:genreName", async (req,res) => {
   try{
     const books = await readBookByGenre(req.params.genreName)
@@ -108,6 +120,16 @@ app.get("/api/genres", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch genres." });
   }
 });
+
+app.get("/api/books/genre/all", async (req, res) => {
+  try {
+    const books = await Books.find(); // fetch all books
+    res.json({ data: { books }});
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 
 app.get('/api/categories/genre/:genre', async (req, res) => {
   try {
@@ -155,19 +177,127 @@ app.get("/api/books/genre/:genreName/category/:categoryId", async (req, res) => 
 });
 
 
-// app.get("/api/categories/:categoryId", async (req, res) => {
-//   try {
-//     const category = await readCategoryById(req.params.categoryId);
+// Add to wishlist
+app.post("/api/wishlist", async (req, res) => {
+    try {
+        const item = new Wishlist(req.body);
+        const saved = await item.save();
+        res.status(201).json(saved);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
-//     if (category) {
-//       res.json({ data: { category }});
-//     } else {
-//       res.status(404).json({ error: "Category not found." });
-//     }
-//   } catch (error) {
-//     res.status(500).json({ error: "Failed to fetch category." });
-//   }
-// });
+// Get wishlist
+app.get("/api/wishlist", async (req, res) => {
+    const items = await Wishlist.find();
+    res.json(items);
+});
+
+// Delete item
+app.delete("/api/wishlist/:id", async (req, res) => {
+    await Wishlist.findByIdAndDelete(req.params.id);
+    res.json({ message: "Item removed" });
+});
+
+//CART APIs
+
+const Cart = require("./models/cart.models");
+
+// Add to cart
+app.post("/api/cart", async (req, res) => {
+  try {
+    const { bookId, title, price, mrp, coverImageUrl } = req.body;
+
+    // check if already exists
+    let existing = await Cart.findOne({ bookId });
+    if (existing) {
+      existing.qty += 1;
+      const updated = await existing.save();
+      return res.status(200).json(updated);
+    }
+
+    else{
+      const newItem = new Cart({ bookId, title, price, mrp, coverImageUrl });
+      await newItem.save();
+    }
+    const cart = await Cart.find();
+    res.status(200).json({ cart });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all cart items
+app.get("/api/cart", async (req, res) => {
+  try {
+    const items = await Cart.find();
+    res.json({ cart:items });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch cart" });
+  }
+});
+
+// Update quantity
+app.post("/api/cart/:id", async (req, res) => {
+  try {
+    const { qty } = req.body;
+    if (qty < 1) {
+      return res.status(400).json({ error: "Quantity must be at least 1" });
+    }
+    const updated = await Cart.findByIdAndUpdate(req.params.id,{ qty },{ new: true });
+    const cart = await Cart.find();
+    res.json({ cart }); 
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update quantity" });
+  }
+});
+
+// Remove from cart
+app.delete("/api/cart/:id", async (req, res) => {
+  try {
+    await Cart.findByIdAndDelete(req.params.id);
+    const cart = await Cart.find();
+    res.json({ cart }); 
+  } catch (err) {
+    res.status(500).json({ error: "Failed to remove item" });
+  }
+});
+
+// Place new order
+app.post("/api/orders", async (req, res) => {
+  try {
+    const { books, address, total } = req.body;
+if (!books || books.length === 0 || !address || address.trim() === "" || !total || total <= 0) {
+  return res.status(400).json({ error: "Books, Address and Total Price are required" });
+}
+
+
+    const order = new Orders({
+      books,
+      address, 
+      total
+    });
+
+    await order.save();
+
+    res.status(201).json({ message: "Order placed successfully", order });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to place order" });
+  }
+});
+
+// Get all orders
+app.get("/api/orders", async (req, res) => {
+  try {
+    const orders = await Orders.find().sort({ date: -1 }); 
+    res.json({ orders });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch orders" });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
