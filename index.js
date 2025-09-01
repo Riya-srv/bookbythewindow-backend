@@ -181,6 +181,7 @@ app.get("/api/books/genre/:genreName/category/:categoryId", async (req, res) => 
 app.post("/api/wishlist", async (req, res) => {
     try {
         const item = new Wishlist(req.body);
+        console.log(item)
         const saved = await item.save();
         res.status(201).json(saved);
     } catch (err) {

@@ -5,7 +5,7 @@ const wishlistSchema = new mongoose.Schema({
     title: String,
     author: String,
     price: Number,
-    image: String,
+    coverImageUrl: String,
 }, { timestamps: true });
 
 const Wishlist = mongoose.model("Wishlist", wishlistSchema);
