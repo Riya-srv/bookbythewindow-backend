@@ -230,14 +230,38 @@ app.post("/api/cart", async (req, res) => {
 });
 
 // Get all cart items
-app.get("/api/cart", async (req, res) => {
+// app.get("/api/cart", async (req, res) => {
+//   try {
+//     const items = await Cart.find();
+//     res.json({ cart:items });
+//   } catch (err) {
+//     res.status(500).json({ error: "Failed to fetch cart" });
+//   }
+// });
+
+// Add to cart
+app.post("/api/cart", async (req, res) => {
   try {
-    const items = await Cart.find();
-    res.json({ cart:items });
+    const { bookId, title, price, qty, coverImageUrl } = req.body;
+
+    // check if already exists
+    let existing = await Cart.findOne({ bookId });
+    if (existing) {
+      existing.qty += 1;
+      await existing.save();
+    } else {
+      const newItem = new Cart({ bookId, title, price, qty, coverImageUrl });
+      await newItem.save();
+    }
+
+    // Always return the full cart
+    const cart = await Cart.find();
+    res.status(200).json({ cart });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch cart" });
+    res.status(500).json({ error: err.message });
   }
 });
+
 
 // Update quantity
 app.post("/api/cart/:id", async (req, res) => {
