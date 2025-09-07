@@ -205,39 +205,15 @@ app.delete("/api/wishlist/:id", async (req, res) => {
 
 const Cart = require("./models/cart.models");
 
-// Add to cart
-app.post("/api/cart", async (req, res) => {
+// Get all cart items
+app.get("/api/cart", async (req, res) => {
   try {
-    const { bookId, title, price, mrp, coverImageUrl } = req.body;
-
-    // check if already exists
-    let existing = await Cart.findOne({ bookId });
-    if (existing) {
-      existing.qty += 1;
-      const updated = await existing.save();
-      return res.status(200).json(updated);
-    }
-
-    else{
-      const newItem = new Cart({ bookId, title, price, mrp, coverImageUrl });
-      await newItem.save();
-    }
-    const cart = await Cart.find();
-    res.status(200).json({ cart });
+    const items = await Cart.find();
+    res.json({ cart:items });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Failed to fetch cart" });
   }
 });
-
-// Get all cart items
-// app.get("/api/cart", async (req, res) => {
-//   try {
-//     const items = await Cart.find();
-//     res.json({ cart:items });
-//   } catch (err) {
-//     res.status(500).json({ error: "Failed to fetch cart" });
-//   }
-// });
 
 // Add to cart
 app.post("/api/cart", async (req, res) => {
